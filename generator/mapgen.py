@@ -1,25 +1,19 @@
-import osmapi
+import overpy
 import re
 import os
 
-min_lat = 52.28190
-max_lat = 52.28697
-min_lon = 8.02050
-max_lon = 8.02539
+#campus 52.28190, 8.02050, 52.28697, 8.02539
+#osna 52.228900, 7.933464, 52.319622, 8.144213
+#lk osna 52.043981, 7.651926, 52.695859, 8.477087
+#westniedersachen 51.993725, 6.703748, 53.843298, 9.541409
+#niedersachsen 51.485112, 6.861938, 53.637802, 11.588042
+#norddeutschland 50.672107, 5.855683, 55.051746, 15.352798
+#deutschland (too big) 47.459689, 6.347216, 55.051746, 15.352798
 
-#osna 52.228900, 7.933464; 52.319622, 8.144213
-#min_lat = 52.228900
-#max_lat = 52.319622
-#min_lon = 7.933464
-#max_lon = 8.144213
+scale = 50
 
-#lk osna 52.043981, 7.651926
-
-
-scale = (max_lat-min_lat + max_lon-min_lon) / 2 * 1000000 / 100
-
-osm = osmapi.OsmApi()
-entries = osm.Map(min_lon, min_lat, max_lon, max_lat)
+op = overpy.Overpass()
+entries = op.query("[out:json];node[amenity][name](51.993725, 6.703748, 53.843298, 9.541409);out body;")
 
 x = list()
 y = list()
@@ -27,26 +21,14 @@ l = list()
 h = list()
 t = list()
 
-for entry in entries:
-    if "building" in entry["data"]["tag"] and "name" in entry["data"]["tag"] and "nd" in entry["data"]:
-        name = re.sub("\\s+", "_", entry["data"]["tag"]["name"])
+for node in entries.nodes:
+    name = re.sub("\\s+", "_", node.tags.get("name", "n/a"))
 
-        nodes = osm.NodesGet(entry["data"]["nd"])
-        avg_lat = 0
-        avg_lon = 0
-        for node in nodes.values():
-            avg_lat += node["lat"]
-            avg_lon += node["lon"]
-        avg_lat /= len(nodes)
-        avg_lon /= len(nodes)
-        avg_lat *= 1000000
-        avg_lon *= 1000000
-
-        x.append(avg_lon)
-        y.append(avg_lat)
-        l.append(len(name)*scale)
-        h.append(scale)
-        t.append(name)
+    x.append(node.lon * 1000000)
+    y.append(node.lat * 1000000)
+    l.append(len(name)*scale)
+    h.append(scale)
+    t.append(name)
 
 print(len(x))
 for i in range(len(x)):
