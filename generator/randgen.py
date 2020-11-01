@@ -12,4 +12,4 @@ for size in [20, 100, 1000]:#, 10000, 100000, 1000000, 10000000]:
                 l = random.randint(1, size * 0.25)
                 h = random.randint(1, size * 0.25)
                 t = "Point_{}".format(i)
-                f.write("{:.0f} {:.0f} {:.0f} {:.0f} {}\n".format(x, y, l, h, t))
+                f.write("{:.0f} {:.0f} {:.0f} {:.0f} {} 0 0 0\n".format(x, y, l, h, t))

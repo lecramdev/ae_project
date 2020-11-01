@@ -32,4 +32,4 @@ for node in entries.nodes:
 
 print(len(x))
 for i in range(len(x)):
-    print("{:.0f} {:.0f} {:.0f} {:.0f} {}".format(x[i], y[i], l[i], h[i], t[i]))
+    print("{:.0f} {:.0f} {:.0f} {:.0f} {} 0 0 0".format(x[i], y[i], l[i], h[i], t[i]))
