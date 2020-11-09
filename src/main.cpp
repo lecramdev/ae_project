@@ -1,10 +1,11 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <sstream>
 #include <vector>
 #include <chrono>
 #include <iomanip>
+#include <map>
+#include <memory>
 
 #include "DataPoint.h"
 #include "util.h"
@@ -12,6 +13,29 @@
 #include "SimpleAlgorithm.h"
 
 typedef std::chrono::high_resolution_clock Clock;
+
+std::unique_ptr<Algorithm> selectAlgorithm(std::map<std::string, std::string>& options)
+{
+    std::unique_ptr<Algorithm> algo;
+    std::string algoStr = "simple"; // set default
+
+    if (options.find("-algo") != options.end())
+    {
+        algoStr = options["-algo"]; // Select algorithm based on option
+    }
+
+    if (algoStr == "simple")
+    {
+        std::cout << "Using \"SimpleAlgorithm\"" << std::endl;
+        algo = std::make_unique<SimpleAlgorithm>();
+    }
+    else
+    {
+        throw std::runtime_error("Algorithm not found!");
+    }
+
+    return algo;
+}
 
 std::vector<DataPoint> loadFile(const std::string& filename, bool all, bool withLabel)
 {
@@ -82,49 +106,61 @@ void writeFile(const std::string& filename, const std::vector<DataPoint>& data)
 
 int main(int argc, char* argv[])
 {
-    //read commandline arguments
-    std::string evalfile;
-    std::string infile;
-    std::string outfile;
-
     if (argc <= 1)
     {
-        std::cout << "Commands missing. Possible commands are:" << std::endl;
+        std::cout << "ERROR: Commands missing. Possible commands are:" << std::endl;
         std::cout << "\"-in filename1 -out filename2\" where filename1 is the input file and filename2 is the output file" << std::endl;
         std::cout << "\"-eval filename\" where filename is the file to be evaltuated" << std::endl;
     }
     else
     {
+        std::map<std::string, std::string> options;
         //skip first command (is filename)
-        for (int i = 1; i < argc; i = i + 2)
+        for (int i = 1; i < argc; i++)
         {
             std::string cmd = argv[i];
-            if (cmd == "-eval")
+            if (cmd[0] != '-')
             {
-                if (i + 1 < argc)
-                {
-                    evalfile = argv[i + 1];
-                }
+                std::cout << "ERROR: Options start at least with one \"-\"" << std::endl;
+                return 1;
             }
-            else if (cmd == "-in")
+
+            if (cmd[1] == '-')
             {
-                if (i + 1 < argc)
-                {
-                    infile = argv[i + 1];
-                }
+                options.emplace(cmd, std::string());
             }
-            else if (cmd == "-out")
+            else
             {
                 if (i + 1 < argc)
                 {
-                    outfile = argv[i + 1];
+                    options.emplace(cmd, argv[i + 1]);
+                    i++;
+                }
+                else
+                {
+                    std::cout << "ERROR: Missing parameter value for \"" << cmd << "\"!" << std::endl;
+                    return 1;
                 }
             }
         }
 
-        if (!evalfile.empty())
+        std::cout << "Running with the following options:" << std::endl;
+        for (const auto& o : options)
+        {
+            if (o.first[1] == '-')
+            {
+                std::cout << "  " << o.first << std::endl;
+            }
+            else
+            {
+                std::cout << "  " << o.first << " = " << o.second << std::endl;
+            }
+        }
+
+        if (options.find("-eval") != options.end())
         {
             //do evaluation of file
+            std::string evalfile = options["-eval"];
             std::vector<DataPoint> evalData = loadFile(evalfile, false, true);
 
             //check all Labels against all other Labels
@@ -168,23 +204,21 @@ int main(int argc, char* argv[])
         }
         else
         {
-            if (infile.empty() || outfile.empty())
+            if (options.find("-in") != options.end() && options.find("-out") != options.end())
             {
-                std::cout << "Either -in or -out command has no filename given" << std::endl;
-            }
-            else
-            {
+                std::string infile = options["-in"];
+                std::string outfile = options["-out"];
                 // Open File
                 std::vector<DataPoint> input = loadFile(infile, true, false);
 
                 // Setup algorithm
-                SimpleAlgorithm algo;
+                std::unique_ptr<Algorithm> algo = selectAlgorithm(options);
 
                 // Start time
                 auto t1 = Clock::now();
 
                 // Run algorithm
-                algo.run(input);
+                algo->run(input);
 
                 // End time
                 auto t2 = Clock::now();
@@ -206,6 +240,13 @@ int main(int argc, char* argv[])
                 // Write file
                 writeFile(outfile, input);
             }
+            else
+            {
+                std::cout << "ERROR: Either \"-in\" or \"-out\" option not given" << std::endl;
+                return 1;
+            }
         }
     }
+
+    return 0;
 }
