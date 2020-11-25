@@ -25,6 +25,7 @@ public:
                         if (bb.collision(data[j].boundingBox()))
                         {
                             fits = false;
+                            break;
                         }
                     }
                 }

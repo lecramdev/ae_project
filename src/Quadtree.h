@@ -14,12 +14,13 @@ struct QuadtreeNode
     uint32_t first_child; // index of first child
     std::array<DataPoint, B> elements;
     uint32_t cnt;
+    uint32_t labels;
 
-    QuadtreeNode() : parent(0), first_child(0), cnt(0)
+    QuadtreeNode() : parent(0), first_child(0), cnt(0), labels(0)
     {
     }
 
-    QuadtreeNode(uint32_t parent, const BoundingBox& bb) : bb(bb), parent(parent), first_child(0), cnt(0)
+    QuadtreeNode(uint32_t parent, const BoundingBox& bb) : bb(bb), parent(parent), first_child(0), cnt(0), labels(0)
     {
     }
 
@@ -103,47 +104,44 @@ private:
     template<bool IGNORE_CURRENT>
     bool collision(int node, const BoundingBox& bb)
     {
-        if (bb.collision(nodes[node].bb))
+        if (node != userNode || IGNORE_CURRENT)
         {
-            if (node != userNode || IGNORE_CURRENT)
+            for (uint32_t i = 0; i < nodes[node].cnt; i++)
             {
-                for (uint32_t i = 0; i < nodes[node].cnt; i++)
+                if (bb.collision(nodes[node].elements[i].boundingBox()))
                 {
-                    if (bb.collision(nodes[node].elements[i].boundingBox()))
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
-            else
+        }
+        else
+        {
+            for (uint32_t i = 0; i < nodes[node].cnt; i++)
             {
-                for (uint32_t i = 0; i < nodes[node].cnt; i++)
+                if (i != userElement && bb.collision(nodes[node].elements[i].boundingBox()))
                 {
-                    if (i != userElement && bb.collision(nodes[node].elements[i].boundingBox()))
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
+        }
 
-            if (nodes[node].has_children())
+        if (nodes[node].has_children())
+        {
+            if (nodes[nodes[node].first_child].labels && bb.collision(nodes[nodes[node].first_child].bb) && collision<IGNORE_CURRENT>(nodes[node].first_child, bb))
             {
-                if (collision<IGNORE_CURRENT>(nodes[node].first_child, bb))
-                {
-                    return true;
-                }
-                if (collision<IGNORE_CURRENT>(nodes[node].first_child + 1, bb))
-                {
-                    return true;
-                }
-                if (collision<IGNORE_CURRENT>(nodes[node].first_child + 2, bb))
-                {
-                    return true;
-                }
-                if (collision<IGNORE_CURRENT>(nodes[node].first_child + 3, bb))
-                {
-                    return true;
-                }
+                return true;
+            }
+            if (nodes[nodes[node].first_child + 1].labels && bb.collision(nodes[nodes[node].first_child + 1].bb) && collision<IGNORE_CURRENT>(nodes[node].first_child + 1, bb))
+            {
+                return true;
+            }
+            if (nodes[nodes[node].first_child + 2].labels && bb.collision(nodes[nodes[node].first_child + 2].bb) && collision<IGNORE_CURRENT>(nodes[node].first_child + 2, bb))
+            {
+                return true;
+            }
+            if (nodes[nodes[node].first_child + 3].labels && bb.collision(nodes[nodes[node].first_child + 3].bb) && collision<IGNORE_CURRENT>(nodes[node].first_child + 3, bb))
+            {
+                return true;
             }
         }
 
@@ -244,11 +242,13 @@ public:
         while (true)
         {
             Node& n = get(node);
+            int labels = 0;
             for (uint32_t i = 0; i < nodes[node].cnt; i++)
             {
                 if (get(node, i).isLabeled())
                 {
                     bb.update(get(node, i).boundingBox());
+                    labels++;
                 }
                 else
                 {
@@ -259,12 +259,17 @@ public:
             if (n.has_children())
             {
                 bb.update(get(n.first_child).bb);
+                labels += get(n.first_child).labels;
                 bb.update(get(n.first_child + 1).bb);
+                labels += get(n.first_child + 1).labels;
                 bb.update(get(n.first_child + 2).bb);
+                labels += get(n.first_child + 2).labels;
                 bb.update(get(n.first_child + 3).bb);
+                labels += get(n.first_child + 3).labels;
             }
 
             n.bb = bb;
+            n.labels = labels;
 
             if (node == 0)
             {
@@ -299,6 +304,6 @@ public:
     template<bool IGNORE_CURRENT>
     bool collision(const BoundingBox& bb)
     {
-        return collision<IGNORE_CURRENT>(0, bb);
+        return nodes[0].labels && collision<IGNORE_CURRENT>(0, bb);
     }
 };

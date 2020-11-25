@@ -14,7 +14,7 @@ public:
             bb.update(val.xPos, val.yPos);
         }
 
-        Quadtree<16> tree(bb);
+        Quadtree<128> tree(bb);
         tree.insert(data);
 
         do
