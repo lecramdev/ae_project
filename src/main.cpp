@@ -27,7 +27,7 @@ std::unique_ptr<Algorithm> selectAlgorithm(std::map<std::string, std::string>& o
     if (algoStr == "simple")
     {
         std::cout << "Using \"SimpleAlgorithm\"" << std::endl;
-        algo = std::make_unique<SimpleAlgorithm>();
+        algo = std::make_unique<SimpleAlgorithm>(options.find("--sort") != options.end());
     }
     else if (algoStr == "treetest")
     {

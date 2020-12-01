@@ -114,47 +114,47 @@ public:
 
         while (true)
         {
-            if (nodes[node].has_children())
+            if (get(node).has_children())
             {
                 // TODO: try direct calculation
-                int xsplit = nodes[node].bb.center_x();
-                int ysplit = nodes[node].bb.center_y();
+                int xsplit = get(node).bb.center_x();
+                int ysplit = get(node).bb.center_y();
                 if (val.xPos > xsplit)
                 {
                     if (val.yPos > ysplit)
                     {
-                        node = nodes[node].first_child;
+                        node = get(node).first_child;
                     }
                     else
                     {
-                        node = nodes[node].first_child + 1;
+                        node = get(node).first_child + 1;
                     }
                 }
                 else
                 {
                     if (val.yPos > ysplit)
                     {
-                        node = nodes[node].first_child + 2;
+                        node = get(node).first_child + 2;
                     }
                     else
                     {
-                        node = nodes[node].first_child + 3;
+                        node = get(node).first_child + 3;
                     }
                 }
             }
             else
             {
-                if (nodes[node].is_full())
+                if (get(node).is_full())
                 {
-                    nodes[node].first_child = nodes.size();
-                    nodes.emplace_back(node, BoundingBox(nodes[node].bb.center_x(), nodes[node].bb.center_y(), nodes[node].bb.xmax, nodes[node].bb.ymax));
-                    nodes.emplace_back(node, BoundingBox(nodes[node].bb.center_x(), nodes[node].bb.ymin, nodes[node].bb.xmax, nodes[node].bb.center_y()));
-                    nodes.emplace_back(node, BoundingBox(nodes[node].bb.ymin, nodes[node].bb.center_y(), nodes[node].bb.center_x(), nodes[node].bb.ymax));
-                    nodes.emplace_back(node, BoundingBox(nodes[node].bb.ymin, nodes[node].bb.ymin, nodes[node].bb.center_x(), nodes[node].bb.center_y()));
+                    get(node).first_child = nodes.size();
+                    nodes.emplace_back(node, BoundingBox(get(node).bb.center_x(), get(node).bb.center_y(), get(node).bb.xmax, get(node).bb.ymax));
+                    nodes.emplace_back(node, BoundingBox(get(node).bb.center_x(), get(node).bb.ymin, get(node).bb.xmax, get(node).bb.center_y()));
+                    nodes.emplace_back(node, BoundingBox(get(node).bb.ymin, get(node).bb.center_y(), get(node).bb.center_x(), get(node).bb.ymax));
+                    nodes.emplace_back(node, BoundingBox(get(node).bb.ymin, get(node).bb.ymin, get(node).bb.center_x(), get(node).bb.center_y()));
                 }
                 else
                 {
-                    nodes[node].insert(val);
+                    get(node).insert(val);
                     return;
                 }
             }
@@ -195,9 +195,8 @@ public:
         int node = userNode;
         while (true)
         {
-            Node& n = get(node);
             int labels = 0;
-            for (uint32_t i = 0; i < nodes[node].cnt; i++)
+            for (uint32_t i = 0; i < get(node).cnt; i++)
             {
                 if (get(node, i).isLabeled())
                 {
@@ -210,34 +209,34 @@ public:
                 }
             }
 
-            if (n.has_children())
+            if (get(node).has_children())
             {
-                bb.update(get(n.first_child).bb);
-                labels += get(n.first_child).labels;
-                bb.update(get(n.first_child + 1).bb);
-                labels += get(n.first_child + 1).labels;
-                bb.update(get(n.first_child + 2).bb);
-                labels += get(n.first_child + 2).labels;
-                bb.update(get(n.first_child + 3).bb);
-                labels += get(n.first_child + 3).labels;
+                bb.update(get(get(node).first_child).bb);
+                labels += get(get(node).first_child).labels;
+                bb.update(get(get(node).first_child + 1).bb);
+                labels += get(get(node).first_child + 1).labels;
+                bb.update(get(get(node).first_child + 2).bb);
+                labels += get(get(node).first_child + 2).labels;
+                bb.update(get(get(node).first_child + 3).bb);
+                labels += get(get(node).first_child + 3).labels;
             }
 
-            n.bb = bb;
-            n.labels = labels;
+            get(node).bb = bb;
+            get(node).labels = labels;
 
             if (node == 0)
             {
                 return;
             }
 
-            node = n.parent;
+            node = get(node).parent;
         }
     }
 
     bool next()
     {
         userElement++;
-        if (userElement >= nodes[userNode].cnt)
+        if (userElement >= get(userNode).cnt)
         {
             userElement = 0;
             userNode++;
@@ -270,9 +269,9 @@ public:
 
                 if (node != userNode || IGNORE_CURRENT)
                 {
-                    for (uint32_t i = 0; i < nodes[node].cnt; i++)
+                    for (uint32_t i = 0; i < get(node).cnt; i++)
                     {
-                        if (nodes[node].elements[i].isLabeled() && bb.collision(nodes[node].elements[i].boundingBox()))
+                        if (get(node, i).isLabeled() && bb.collision(get(node, i).boundingBox()))
                         {
                             return true;
                         }
@@ -280,32 +279,32 @@ public:
                 }
                 else
                 {
-                    for (uint32_t i = 0; i < nodes[node].cnt; i++)
+                    for (uint32_t i = 0; i < get(node).cnt; i++)
                     {
-                        if (i != userElement && nodes[node].elements[i].isLabeled() && bb.collision(nodes[node].elements[i].boundingBox()))
+                        if (i != userElement && get(node, i).isLabeled() && bb.collision(get(node, i).boundingBox()))
                         {
                             return true;
                         }
                     }
                 }
 
-                if (nodes[node].has_children())
+                if (get(node).has_children())
                 {
-                    if (nodes[nodes[node].first_child].labels && bb.collision(nodes[nodes[node].first_child].bb))
+                    if (get(get(node).first_child).labels && bb.collision(get(get(node).first_child).bb))
                     {
-                        stack.push_back(nodes[node].first_child);
+                        stack.push_back(get(node).first_child);
                     }
-                    if (nodes[nodes[node].first_child + 1].labels && bb.collision(nodes[nodes[node].first_child + 1].bb))
+                    if (get(get(node).first_child + 1).labels && bb.collision(get(get(node).first_child + 1).bb))
                     {
-                        stack.push_back(nodes[node].first_child + 1);
+                        stack.push_back(get(node).first_child + 1);
                     }
-                    if (nodes[nodes[node].first_child + 2].labels && bb.collision(nodes[nodes[node].first_child + 2].bb))
+                    if (get(get(node).first_child + 2).labels && bb.collision(get(get(node).first_child + 2).bb))
                     {
-                        stack.push_back(nodes[node].first_child + 2);
+                        stack.push_back(get(node).first_child + 2);
                     }
-                    if (nodes[nodes[node].first_child + 3].labels && bb.collision(nodes[nodes[node].first_child + 3].bb))
+                    if (get(get(node).first_child + 3).labels && bb.collision(get(get(node).first_child + 3).bb))
                     {
-                        stack.push_back(nodes[node].first_child + 3);
+                        stack.push_back(get(node).first_child + 3);
                     }
                 }
             }
