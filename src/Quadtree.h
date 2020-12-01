@@ -2,6 +2,7 @@
 
 #include <array>
 #include <vector>
+#include <deque>
 
 #include "DataPoint.h"
 #include "BoundingBox.h"
@@ -99,53 +100,6 @@ private:
     DataPoint& get(uint32_t i, uint32_t j)
     {
         return nodes[i].elements[j];
-    }
-
-    template<bool IGNORE_CURRENT>
-    bool collision(int node, const BoundingBox& bb)
-    {
-        if (node != userNode || IGNORE_CURRENT)
-        {
-            for (uint32_t i = 0; i < nodes[node].cnt; i++)
-            {
-                if (bb.collision(nodes[node].elements[i].boundingBox()))
-                {
-                    return true;
-                }
-            }
-        }
-        else
-        {
-            for (uint32_t i = 0; i < nodes[node].cnt; i++)
-            {
-                if (i != userElement && bb.collision(nodes[node].elements[i].boundingBox()))
-                {
-                    return true;
-                }
-            }
-        }
-
-        if (nodes[node].has_children())
-        {
-            if (nodes[nodes[node].first_child].labels && bb.collision(nodes[nodes[node].first_child].bb) && collision<IGNORE_CURRENT>(nodes[node].first_child, bb))
-            {
-                return true;
-            }
-            if (nodes[nodes[node].first_child + 1].labels && bb.collision(nodes[nodes[node].first_child + 1].bb) && collision<IGNORE_CURRENT>(nodes[node].first_child + 1, bb))
-            {
-                return true;
-            }
-            if (nodes[nodes[node].first_child + 2].labels && bb.collision(nodes[nodes[node].first_child + 2].bb) && collision<IGNORE_CURRENT>(nodes[node].first_child + 2, bb))
-            {
-                return true;
-            }
-            if (nodes[nodes[node].first_child + 3].labels && bb.collision(nodes[nodes[node].first_child + 3].bb) && collision<IGNORE_CURRENT>(nodes[node].first_child + 3, bb))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
 public:
@@ -304,6 +258,58 @@ public:
     template<bool IGNORE_CURRENT>
     bool collision(const BoundingBox& bb)
     {
-        return nodes[0].labels && collision<IGNORE_CURRENT>(0, bb);
+        if (nodes[0].labels)
+        {
+            std::deque<int> stack;
+            stack.push_back(0);
+
+            while (!stack.empty())
+            {
+                int node = stack.front();
+                stack.pop_front();
+
+                if (node != userNode || IGNORE_CURRENT)
+                {
+                    for (uint32_t i = 0; i < nodes[node].cnt; i++)
+                    {
+                        if (nodes[node].elements[i].isLabeled() && bb.collision(nodes[node].elements[i].boundingBox()))
+                        {
+                            return true;
+                        }
+                    }
+                }
+                else
+                {
+                    for (uint32_t i = 0; i < nodes[node].cnt; i++)
+                    {
+                        if (i != userElement && nodes[node].elements[i].isLabeled() && bb.collision(nodes[node].elements[i].boundingBox()))
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                if (nodes[node].has_children())
+                {
+                    if (nodes[nodes[node].first_child].labels && bb.collision(nodes[nodes[node].first_child].bb))
+                    {
+                        stack.push_back(nodes[node].first_child);
+                    }
+                    if (nodes[nodes[node].first_child + 1].labels && bb.collision(nodes[nodes[node].first_child + 1].bb))
+                    {
+                        stack.push_back(nodes[node].first_child + 1);
+                    }
+                    if (nodes[nodes[node].first_child + 2].labels && bb.collision(nodes[nodes[node].first_child + 2].bb))
+                    {
+                        stack.push_back(nodes[node].first_child + 2);
+                    }
+                    if (nodes[nodes[node].first_child + 3].labels && bb.collision(nodes[nodes[node].first_child + 3].bb))
+                    {
+                        stack.push_back(nodes[node].first_child + 3);
+                    }
+                }
+            }
+        }
+        return false;
     }
 };

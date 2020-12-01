@@ -256,7 +256,7 @@ int main(int argc, char* argv[])
                     }
                 }
 
-                std::cout << "Labeled: " << labelcount << '/' << input.size() << " Time: " << std::fixed << std::setprecision(3) << execution_time << "s\n";
+                std::cout << "File: " << infile << " Labeled: " << labelcount << '/' << input.size() << " Time: " << std::fixed << std::setprecision(3) << execution_time << "s\n";
 
                 // Write file
                 writeFile(outfile, input);

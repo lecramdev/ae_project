@@ -16,17 +16,14 @@ public:
             bool fits = true;
             data[i].label = LabelPos::NE;
             BoundingBox bb = data[i].boundingBox();
-            for (int j = 0; j < data.size(); j++)
+            for (int j = 0; j < i; j++)
             {
-                if (i != j)
+                if (data[j].isLabeled())
                 {
-                    if (data[j].isLabeled())
+                    if (bb.collision(data[j].boundingBox()))
                     {
-                        if (bb.collision(data[j].boundingBox()))
-                        {
-                            fits = false;
-                            break;
-                        }
+                        fits = false;
+                        break;
                     }
                 }
             }
