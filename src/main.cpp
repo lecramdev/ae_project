@@ -11,6 +11,7 @@
 
 #include "SimpleAlgorithm.h"
 #include "QuadTreeTestAlgo.h"
+#include "SimulatedAnnealing.h"
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -33,6 +34,11 @@ std::unique_ptr<Algorithm> selectAlgorithm(std::map<std::string, std::string>& o
     {
         std::cout << "Using \"QuadTreeTestAlgo\"" << std::endl;
         algo = std::make_unique<QuadTreeTestAlgo>();
+    }
+    else if (algoStr == "siman")
+    {
+        std::cout << "Using \"SimulatedAnnealing\"" << std::endl;
+        algo = std::make_unique<SimulatedAnnealing>();
     }
     else
     {
