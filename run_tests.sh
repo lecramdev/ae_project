@@ -11,6 +11,6 @@ rm -f "$resultsfile"
 for file in "$path"/*.txt;
 do
     filename=$(basename "$file")
-    ./ae_project.exe -in $file -out "$resultspath/$filename" "$@" >> "$resultsfile"
+    ./ae_project.exe -in $file -out "$resultspath/$filename" "$@" | tee -a "$resultsfile"
     #echo ./ae_project.exe -in $file -out "result/$filename" "$@"
 done

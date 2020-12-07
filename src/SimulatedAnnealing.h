@@ -19,7 +19,7 @@ public:
         BoundingBox bb;
         for (const DataPoint& val : data)
         {
-            bb.update(val.xPos, val.yPos);
+            bb.update({val.xPos - val.width, val.yPos - val.height, val.xPos + val.width, val.yPos + val.height});
         }
 
         std::sort(data.begin(), data.end(), [](DataPoint & a, DataPoint & b)
@@ -27,7 +27,7 @@ public:
             return (a.width * a.height) < (b.width * b.height);
         });
 
-        LabelQuadtree<128> labeltree(bb);
+        LabelQuadtree<2048> labeltree(bb);
         // std::vector<Label> labels;
         // labels.reserve(data.size() * 4);
         for (uint32_t i = 0; i < data.size(); i++)
@@ -78,10 +78,12 @@ public:
         std::mt19937 gen(29527987987);
         std::uniform_int_distribution<> rd_point(0, data.size() - 1);
         std::uniform_int_distribution<int8_t> rd_label(0, 4);
-        std::uniform_int_distribution<> rd_prob(0.0, 1.0);
+        std::uniform_real_distribution<> rd_prob(0.0, 1.0);
 
         for (size_t i = 0; i < data.size(); i++)
         {
+            //objective = data.size();
+
             auto pos = rd_label(gen);
             if (pos)
             {
@@ -101,6 +103,43 @@ public:
             {
                 objective += 1;
             }
+
+            /*size_t min_col = collision_list[i * 4].size();
+            int min_pos = 1;
+            if (collision_list[i * 4 + 1].size() < min_col);
+            {
+                min_col = collision_list[i * 4 + 1].size();
+                min_pos = 2;
+            }
+            if (collision_list[i * 4 + 2].size() < min_col);
+            {
+                min_col = collision_list[i * 4 + 2].size();
+                min_pos = 3;
+            }
+            if (collision_list[i * 4 + 3].size() < min_col);
+            {
+                min_col = collision_list[i * 4 + 3].size();
+                min_pos = 4;
+            }*/
+
+            /*bool ok = true;
+            for (uint32_t c : collision_list[i * 4])
+            {
+                if (labels[c])
+                {
+                    ok = false;
+                    break;
+                }
+            }
+
+            if (ok)
+            {
+                labels[i * 4] = true;
+            }
+            else
+            {
+                objective += 1;
+            }*/
         }
 
         labels_min = labels;
@@ -109,143 +148,187 @@ public:
 
         std::cout << "initial generated" << std::endl;
 
-        double t = 0.5;
-        constexpr double delta_t = 0.001;
-        for (int it = 0; it < 10000000; it++)
+        if (objective > 0)
         {
-            size_t point = rd_point(gen);
-            int8_t pos = rd_label(gen);
-
-            int8_t cur_pos = 0;
-            if (labels[point * 4])
+            double t = 1;
+            constexpr double delta_t = 0.95;
+            bool max_label_reached = false;
+            for (int it = 0; it < 50 && !max_label_reached; it++)
             {
-                cur_pos = 1;
-            }
-            else if (labels[point * 4 + 1])
-            {
-                cur_pos = 2;
-            }
-            else if (labels[point * 4 + 2])
-            {
-                cur_pos = 3;
-            }
-            else if (labels[point * 4 + 3])
-            {
-                cur_pos = 4;
-            }
-            else
-            {
-                cur_pos = 0;
-            }
-
-            int delta = 0;
-            size_t idx = point * 4 + pos - 1;
-            size_t cur_idx = point * 4 + cur_pos - 1;
-
-            if (cur_pos)
-            {
-                for (uint32_t c : collision_list[cur_idx])
+                size_t no_changes = 0;
+                while (no_changes < 8 * data.size())
                 {
-                    if (labels[c])
+                    // Generate random point and label position
+                    size_t point = rd_point(gen);
+                    int8_t pos = rd_label(gen);
+
+                    // Lookup cuurent Label position
+                    int8_t cur_pos = 0;
+                    if (labels[point * 4])
                     {
-                        delta -= 2;
+                        cur_pos = 1;
+                    }
+                    else if (labels[point * 4 + 1])
+                    {
+                        cur_pos = 2;
+                    }
+                    else if (labels[point * 4 + 2])
+                    {
+                        cur_pos = 3;
+                    }
+                    else if (labels[point * 4 + 3])
+                    {
+                        cur_pos = 4;
+                    }
+                    else
+                    {
+                        cur_pos = 0;
+                    }
+
+                    // discard if already set
+                    if (pos == cur_pos)
+                    {
+                        continue;
+                    }
+
+                    int delta = 0;
+                    size_t idx = point * 4 + pos - 1;
+                    size_t cur_idx = point * 4 + cur_pos - 1;
+
+                    // objective change from current position
+                    if (cur_pos)
+                    {
+                        for (uint32_t c : collision_list[cur_idx])
+                        {
+                            if (labels[c])
+                            {
+                                delta -= 2;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        delta -= 1;
+                    }
+
+                    // objective change from new position
+                    if (pos)
+                    {
+                        for (uint32_t c : collision_list[idx])
+                        {
+                            if (labels[c])
+                            {
+                                delta += 2;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        delta += 1;
+                    }
+
+                    no_changes++;
+                    // accept change?
+                    if (delta > 0)
+                    {
+                        double sample = rd_prob(gen);
+                        double prob = std::exp(-delta / t);
+                        if (sample > prob)
+                        {
+                            //no_changes++;
+                            continue;
+                        }
+                    }
+
+                    // unset current position
+                    if (cur_pos)
+                    {
+                        labels[cur_idx] = false;
+                        label_conflicts[cur_idx] = 0;
+                        for (uint32_t c : collision_list[cur_idx])
+                        {
+                            if (labels[c])
+                            {
+                                label_conflicts[c]--;
+                            }
+                        }
+                    }
+
+                    // set new position
+                    if (pos)
+                    {
+                        labels[idx] = true;
+                        for (uint32_t c : collision_list[idx])
+                        {
+                            if (labels[c])
+                            {
+                                label_conflicts[idx]++;
+                                label_conflicts[c]++;
+                            }
+                        }
+                    }
+
+                    // update objective
+                    objective += delta;
+
+                    // save minimum
+                    if (objective < objective_min)
+                    {
+                        labels_min = labels;
+                        label_conflicts_min = label_conflicts;
+                        objective_min = objective;
+
+                        no_changes = 0;
+
+                        //std::cout << "new min: " << objective << '\n';
+
+                        if (objective == 0)
+                        {
+                            max_label_reached = true;
+                            break;
+                        }
                     }
                 }
-            }
-            else
-            {
-                delta -= 1;
-            }
 
-            if (pos)
-            {
-                for (uint32_t c : collision_list[idx])
-                {
-                    if (labels[c])
-                    {
-                        delta += 2;
-                    }
-                }
-            }
-            else
-            {
-                delta += 1;
-            }
-
-            if (delta > 0)
-            {
-                if (rd_prob(gen) > std::exp(-delta / t))
-                {
-                    continue;
-                }
-            }
-
-            if (cur_pos)
-            {
-                labels[cur_idx] = false;
-                label_conflicts[cur_idx] = 0;
-                for (uint32_t c : collision_list[cur_idx])
-                {
-                    if (labels[c])
-                    {
-                        label_conflicts[c]--;
-                    }
-                }
-            }
-
-            if (pos)
-            {
-                labels[idx] = true;
-                for (uint32_t c : collision_list[idx])
-                {
-                    if (labels[c])
-                    {
-                        label_conflicts[idx]++;
-                        label_conflicts[c]++;
-                    }
-                }
-            }
-
-            objective += delta;
-
-            if (objective < objective_min)
-            {
-                labels_min = labels;
-                label_conflicts_min = label_conflicts;
-                objective_min = objective;
+                // decrease temperature
+                t *= delta_t;
+                //std::cout << "temp: " << t << '\n';
             }
         }
 
         std::cout << "frozen" << std::endl;
 
-        while (true)
+        if (objective > 0)
         {
-            ssize_t max_idx = -1;
-            uint32_t max_conf = 0;
-            for (size_t i = 0; i < label_conflicts_min.size(); i++)
+            while (true)
             {
-                if (label_conflicts_min[i] > max_conf)
+                ssize_t max_idx = -1;
+                uint32_t max_conf = 0;
+                for (size_t i = 0; i < label_conflicts_min.size(); i++)
                 {
-                    max_idx = i;
-                    max_conf = label_conflicts_min[i];
-                }
-            }
-
-            if (max_idx >= 0)
-            {
-                labels_min[max_idx] = false;
-                label_conflicts_min[max_idx] = 0;
-                for (uint32_t c : collision_list[max_idx])
-                {
-                    if (labels_min[c])
+                    if (label_conflicts_min[i] > max_conf)
                     {
-                        label_conflicts_min[c]--;
+                        max_idx = i;
+                        max_conf = label_conflicts_min[i];
                     }
                 }
-            }
-            else
-            {
-                break;
+
+                if (max_idx >= 0)
+                {
+                    labels_min[max_idx] = false;
+                    label_conflicts_min[max_idx] = 0;
+                    for (uint32_t c : collision_list[max_idx])
+                    {
+                        if (labels_min[c])
+                        {
+                            label_conflicts_min[c]--;
+                        }
+                    }
+                }
+                else
+                {
+                    break;
+                }
             }
         }
 

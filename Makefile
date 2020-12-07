@@ -28,7 +28,7 @@ $(RELEASE_APP): $(RELEASE_OBJS)
 	$(CXX) -O2 $(RELEASE_OBJS) -o $@
 
 $(DEBUG_APP): $(DEBUG_OBJS)
-	$(CXX) $(DEBUG_OBJS) -o $@
+	$(CXX) -g -pg $(DEBUG_OBJS) -o $@
 
 $(RELEASE_DIR)/%.o: %.cpp
 	@$(MKDIR_P) $(dir $@)
@@ -36,7 +36,7 @@ $(RELEASE_DIR)/%.o: %.cpp
 
 $(DEBUG_DIR)/%.o: %.cpp
 	@$(MKDIR_P) $(dir $@)
-	$(CXX) -g $(CXXFLAGS) -c $< -o $@
+	$(CXX) -g -pg $(CXXFLAGS) -c $< -o $@
 
 .PHONY: all clean
 
