@@ -11,6 +11,7 @@
 #include "util.h"
 
 #include "SimpleAlgorithm.h"
+#include "DGDAlgorithm.h"
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -28,6 +29,10 @@ std::unique_ptr<Algorithm> selectAlgorithm(std::map<std::string, std::string>& o
     {
         std::cout << "Using \"SimpleAlgorithm\"" << std::endl;
         algo = std::make_unique<SimpleAlgorithm>();
+    }
+    else if(algoStr == "dgd"){
+        std::cout << "Using \"DGDAlgorithm\"" << std::endl;
+        algo = std::make_unique<DGDAlgorithm>();
     }
     else
     {
