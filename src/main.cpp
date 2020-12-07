@@ -8,10 +8,10 @@
 #include <memory>
 
 #include "DataPoint.h"
-#include "util.h"
 
 #include "SimpleAlgorithm.h"
 #include "DGDAlgorithm.h"
+#include "QuadTreeTestAlgo.h"
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -28,7 +28,12 @@ std::unique_ptr<Algorithm> selectAlgorithm(std::map<std::string, std::string>& o
     if (algoStr == "simple")
     {
         std::cout << "Using \"SimpleAlgorithm\"" << std::endl;
-        algo = std::make_unique<SimpleAlgorithm>();
+        algo = std::make_unique<SimpleAlgorithm>(options.find("--sort") != options.end());
+    }
+    else if (algoStr == "treetest")
+    {
+        std::cout << "Using \"QuadTreeTestAlgo\"" << std::endl;
+        algo = std::make_unique<QuadTreeTestAlgo>();
     }
     else if(algoStr == "dgd"){
         std::cout << "Using \"DGDAlgorithm\"" << std::endl;
@@ -70,7 +75,7 @@ std::vector<DataPoint> loadFile(const std::string& filename, bool all, bool with
 
             if (file.fail())
             {
-                throw std::runtime_error("Error parsing file: " + filename);
+                throw std::runtime_error("Error parsing file at line " + std::to_string(i + 2));
             }
 
             if (!withLabel)
@@ -81,7 +86,31 @@ std::vector<DataPoint> loadFile(const std::string& filename, bool all, bool with
             //onyl add if neccessary
             if (all || isL)
             {
-                data.emplace_back(x, y, w, h, name, isL, xL, yL);
+                LabelPos pos = LabelPos::NONE;
+                if (isL)
+                {
+                    if (x == xL && y == yL) //datapoint is top left
+                    {
+                        pos = LabelPos::SE;
+                    }
+                    else if (x == xL + w && y == yL) //datapoint is top right
+                    {
+                        pos = LabelPos::SW;
+                    }
+                    else if (x == xL && y == yL - h) //datapoint is bottom left
+                    {
+                        pos = LabelPos::NE;
+                    }
+                    else if (x == xL + w && y == yL - h) //datapoint is bottom right
+                    {
+                        pos = LabelPos::NW;
+                    }
+                    else
+                    {
+                        throw std::runtime_error("ERROR: The Datapoint of Label \"" + name + "\" is not located on any of its corners (at line " + std::to_string(i + 2) + ")");
+                    }
+                }
+                data.emplace_back(x, y, w, h, name, pos);
             }
         }
     }
@@ -100,7 +129,7 @@ void writeFile(const std::string& filename, const std::vector<DataPoint>& data)
         outputfile << data.size() << '\n';
         for (const DataPoint& n : data)
         {
-            outputfile << n.xPos << " " << n.yPos << " " << n.width << " " << n.height << " " << n.name << " " << n.isLabeled << " " << n.xLabelTL << " " << n.yLabelTL << '\n';
+            outputfile << n.xPos << " " << n.yPos << " " << n.width << " " << n.height << " " << n.name << " " << n.isLabeled() << " " << n.xLabelTL() << " " << n.yLabelTL() << '\n';
         }
     }
     else
@@ -172,22 +201,14 @@ int main(int argc, char* argv[])
             int labelcount = 0;
             for (int i = 0; i < evalData.size(); i++)
             {
-                DataPoint entry = evalData[i];
-                if (!((entry.xPos == entry.xLabelTL && entry.yPos == entry.yLabelTL)                                    //datapoint is top left
-                        || (entry.xPos == entry.xLabelTL + entry.width && entry.yPos == entry.yLabelTL)                     //datapoint is top right
-                        || (entry.xPos == entry.xLabelTL && entry.yPos == entry.yLabelTL - entry.height)                    //datapoint is bottom left
-                        || (entry.xPos == entry.xLabelTL + entry.width && entry.yPos == entry.yLabelTL - entry.height)))    //datapoint is bottom right
-                {
-                    std::cout << "ERROR: The Datapoint of Label \"" << evalData[i].name << "\" is not located on any of its corners" << std::endl;
-                }
+                BoundingBox bb = evalData[i].boundingBox();
 
                 bool fits = true;
                 for (int j = 0; j < evalData.size(); j++)
                 {
                     if (i != j)
                     {
-                        if (AABBCollision(evalData[j].xLabelTL, evalData[j].yLabelTL, evalData[j].width, evalData[j].height,
-                                          evalData[i].xLabelTL, evalData[i].yLabelTL, evalData[i].width, evalData[i].height))
+                        if (bb.collision(evalData[j].boundingBox()))
                         {
                             fits = false;
                             std::cout << "ERROR: The Label \"" << evalData[i].name << "\" intersects with Label \"" << evalData[j].name << "\"" << std::endl;
@@ -234,13 +255,13 @@ int main(int argc, char* argv[])
                 size_t labelcount = 0;
                 for (const DataPoint& p : input)
                 {
-                    if (p.isLabeled)
+                    if (p.isLabeled())
                     {
                         labelcount++;
                     }
                 }
 
-                std::cout << "Labeled: " << labelcount << '/' << input.size() << " Time: " << std::fixed << std::setprecision(3) << execution_time << "s\n";
+                std::cout << "File: " << infile << " Labeled: " << labelcount << '/' << input.size() << " Time: " << std::fixed << std::setprecision(3) << execution_time << "s\n";
 
                 // Write file
                 writeFile(outfile, input);

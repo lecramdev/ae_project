@@ -2,3 +2,6 @@ build/
 .vscode
 *.exe
 generator/*.txt
+small_set/
+results/
+results*

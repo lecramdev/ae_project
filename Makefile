@@ -25,14 +25,14 @@ DEBUG_DEPS = $(DEBUG_OBJS:.o=.d)
 
 # Rules
 $(RELEASE_APP): $(RELEASE_OBJS)
-	$(CXX) $(RELEASE_OBJS) -o $@
+	$(CXX) -O2 $(RELEASE_OBJS) -o $@
 
 $(DEBUG_APP): $(DEBUG_OBJS)
 	$(CXX) $(DEBUG_OBJS) -o $@
 
 $(RELEASE_DIR)/%.o: %.cpp
 	@$(MKDIR_P) $(dir $@)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) -O2 $(CXXFLAGS) -c $< -o $@
 
 $(DEBUG_DIR)/%.o: %.cpp
 	@$(MKDIR_P) $(dir $@)
