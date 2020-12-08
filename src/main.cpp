@@ -12,6 +12,7 @@
 #include "SimpleAlgorithm.h"
 #include "DGDAlgorithm.h"
 #include "QuadTreeTestAlgo.h"
+#include "SimulatedAnnealing.h"
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -35,9 +36,15 @@ std::unique_ptr<Algorithm> selectAlgorithm(std::map<std::string, std::string>& o
         std::cout << "Using \"QuadTreeTestAlgo\"" << std::endl;
         algo = std::make_unique<QuadTreeTestAlgo>();
     }
-    else if(algoStr == "dgd"){
+    else if (algoStr == "dgd")
+    {
         std::cout << "Using \"DGDAlgorithm\"" << std::endl;
         algo = std::make_unique<DGDAlgorithm>();
+    }
+    else if (algoStr == "siman")
+    {
+        std::cout << "Using \"SimulatedAnnealing\"" << std::endl;
+        algo = std::make_unique<SimulatedAnnealing>();
     }
     else
     {
@@ -240,20 +247,29 @@ int main(int argc, char* argv[])
                 // Setup algorithm
                 std::unique_ptr<Algorithm> algo = selectAlgorithm(options);
 
-                // Start time
-                auto t1 = Clock::now();
+                int num_repeat = std::ceil(10000.0 / input.size());
+                double sum_time = 0.0;
+                std::vector<DataPoint> working_copy;
 
-                // Run algorithm
-                algo->run(input);
+                for (int i = 0; i < num_repeat; i++)
+                {
+                    working_copy = input;
 
-                // End time
-                auto t2 = Clock::now();
-                std::chrono::duration<double> elapsed_time = t2 - t1;
-                double execution_time = elapsed_time.count();
+                    // Start time
+                    auto t1 = Clock::now();
+
+                    // Run algorithm
+                    algo->run(working_copy);
+
+                    // End time
+                    auto t2 = Clock::now();
+                    std::chrono::duration<double> elapsed_time = t2 - t1;
+                    sum_time += elapsed_time.count();
+                }
 
                 // Count set labels
                 size_t labelcount = 0;
-                for (const DataPoint& p : input)
+                for (const DataPoint& p : working_copy)
                 {
                     if (p.isLabeled())
                     {
@@ -261,10 +277,10 @@ int main(int argc, char* argv[])
                     }
                 }
 
-                std::cout << "File: " << infile << " Labeled: " << labelcount << '/' << input.size() << " Time: " << std::fixed << std::setprecision(3) << execution_time << "s\n";
+                std::cout << "File: " << infile << " Labeled: " << labelcount << '/' << input.size() << " Time: " << std::fixed << std::setprecision(3) << (sum_time / num_repeat) << "s\n";
 
                 // Write file
-                writeFile(outfile, input);
+                writeFile(outfile, working_copy);
             }
             else
             {

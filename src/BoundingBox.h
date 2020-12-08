@@ -7,8 +7,8 @@ struct BoundingBox
     int xmin, ymin, xmax, ymax;
 
     BoundingBox() :
-        xmin(std::numeric_limits<int>::min()), ymin(std::numeric_limits<int>::min()),
-        xmax(std::numeric_limits<int>::max()), ymax(std::numeric_limits<int>::max())
+        xmin(std::numeric_limits<int>::max()), ymin(std::numeric_limits<int>::max()),
+        xmax(std::numeric_limits<int>::min()), ymax(std::numeric_limits<int>::min())
     {
     }
 
@@ -21,12 +21,12 @@ struct BoundingBox
         return xmin < bb.xmax && xmax > bb.xmin && ymin < bb.ymax && ymax > bb.ymin;
     }
 
-    int center_x()
+    int center_x() const
     {
         return (xmin + xmax) / 2;
     }
 
-    int center_y()
+    int center_y() const
     {
         return (ymin + ymax) / 2;
     }

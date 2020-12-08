@@ -6,7 +6,7 @@
 
 enum class LabelPos : int8_t
 {
-    NONE,
+    NONE = -1,
     NE,
     SE,
     SW,
@@ -78,7 +78,25 @@ public:
             return BoundingBox(xPos - width, yPos, xPos, yPos + height);
 
         default:
-            return BoundingBox(0, 0, 0, 0);
+            return BoundingBox(xPos, yPos, xPos, yPos);
+        }
+    }
+
+    BoundingBox boundingBox(LabelPos pos) const
+    {
+        switch (pos)
+        {
+        case LabelPos::NE:
+            return BoundingBox(xPos, yPos, xPos + width, yPos + height);
+        case LabelPos::SE:
+            return BoundingBox(xPos, yPos - height, xPos + width, yPos);
+        case LabelPos::SW:
+            return BoundingBox(xPos - width, yPos - height, xPos, yPos);
+        case LabelPos::NW:
+            return BoundingBox(xPos - width, yPos, xPos, yPos + height);
+
+        default:
+            return BoundingBox(xPos, yPos, xPos, yPos);
         }
     }
 };
