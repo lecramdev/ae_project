@@ -1,16 +1,18 @@
 #!/bin/sh
 
 path=$1
-resultsfile=$2
-resultspath=$3
-shift 3
+resultspath=$2
+shift 2
 
 mkdir -p "$resultspath"
-rm -f "$resultsfile"
+rm -f "$resultspath/results.txt"
 
-for file in "$path"/*.txt;
+files=$(find "$path" -name "*.txt")
+
+for file in $files;
 do
-    filename=$(basename "$file")
-    ./ae_project.exe -in $file -out "$resultspath/$filename" "$@" | tee -a "$resultsfile"
-    #echo ./ae_project.exe -in $file -out "result/$filename" "$@"
+    #filename=$(basename "$file")
+    mkdir -p $(dirname "$resultspath/$file")
+    ./ae_project.exe -in $file -out "$resultspath/$file" "$@" | tee -a "$resultspath/results.txt"
+    #echo ./ae_project.exe -in $file -out "$resultspath/$file" "$@" tee -a "$resultspath/results.txt"
 done

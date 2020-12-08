@@ -241,20 +241,29 @@ int main(int argc, char* argv[])
                 // Setup algorithm
                 std::unique_ptr<Algorithm> algo = selectAlgorithm(options);
 
+                int num_repeat = std::ceil(10000.0 / input.size());                
+                double sum_time = 0.0;
+                std::vector<DataPoint> working_copy;
+
+                for(int i = 0; i < num_repeat; i++)
+                {
+                    working_copy = input;
+
                 // Start time
                 auto t1 = Clock::now();
 
                 // Run algorithm
-                algo->run(input);
+                    algo->run(working_copy);
 
                 // End time
                 auto t2 = Clock::now();
                 std::chrono::duration<double> elapsed_time = t2 - t1;
-                double execution_time = elapsed_time.count();
+                    sum_time += elapsed_time.count();
+                }
 
                 // Count set labels
                 size_t labelcount = 0;
-                for (const DataPoint& p : input)
+                for (const DataPoint& p : working_copy)
                 {
                     if (p.isLabeled())
                     {
@@ -262,10 +271,10 @@ int main(int argc, char* argv[])
                     }
                 }
 
-                std::cout << "File: " << infile << " Labeled: " << labelcount << '/' << input.size() << " Time: " << std::fixed << std::setprecision(3) << execution_time << "s\n";
+                std::cout << "File: " << infile << " Labeled: " << labelcount << '/' << input.size() << " Time: " << std::fixed << std::setprecision(3) << (sum_time / num_repeat) << "s\n";
 
                 // Write file
-                writeFile(outfile, input);
+                writeFile(outfile, working_copy);
             }
             else
             {

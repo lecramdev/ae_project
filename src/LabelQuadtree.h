@@ -47,16 +47,16 @@ template<uint32_t B>
 struct LabelQuadtreeNode
 {
     BoundingBox bb; // Bounding box
-    uint32_t parent; // index of parent
+    //uint32_t parent; // index of parent
     uint32_t first_child; // index of first child
     std::array<Label, B> elements;
     uint32_t cnt;
 
-    LabelQuadtreeNode() : parent(0), first_child(0), cnt(0)
+    LabelQuadtreeNode() : first_child(0), cnt(0)
     {
     }
 
-    LabelQuadtreeNode(uint32_t parent, const BoundingBox& bb) : bb(bb), parent(parent), first_child(0), cnt(0)
+    explicit LabelQuadtreeNode(const BoundingBox& bb) : bb(bb), first_child(0), cnt(0)
     {
     }
 
@@ -102,7 +102,7 @@ private:
 public:
     LabelQuadtree(const BoundingBox& bb)
     {
-        nodes.emplace_back(0, bb);
+        nodes.emplace_back(bb);
     }
 
     void insert(const Label& val)
@@ -144,10 +144,10 @@ public:
                 if (get(node).is_full())
                 {
                     get(node).first_child = nodes.size();
-                    nodes.emplace_back(node, BoundingBox(get(node).bb.center_x(), get(node).bb.center_y(), get(node).bb.xmax, get(node).bb.ymax));
-                    nodes.emplace_back(node, BoundingBox(get(node).bb.center_x(), get(node).bb.ymin, get(node).bb.xmax, get(node).bb.center_y()));
-                    nodes.emplace_back(node, BoundingBox(get(node).bb.ymin, get(node).bb.center_y(), get(node).bb.center_x(), get(node).bb.ymax));
-                    nodes.emplace_back(node, BoundingBox(get(node).bb.ymin, get(node).bb.ymin, get(node).bb.center_x(), get(node).bb.center_y()));
+                    nodes.emplace_back(BoundingBox(get(node).bb.center_x(), get(node).bb.center_y(), get(node).bb.xmax, get(node).bb.ymax));
+                    nodes.emplace_back(BoundingBox(get(node).bb.center_x(), get(node).bb.ymin, get(node).bb.xmax, get(node).bb.center_y()));
+                    nodes.emplace_back(BoundingBox(get(node).bb.ymin, get(node).bb.center_y(), get(node).bb.center_x(), get(node).bb.ymax));
+                    nodes.emplace_back(BoundingBox(get(node).bb.ymin, get(node).bb.ymin, get(node).bb.center_x(), get(node).bb.center_y()));
                 }
                 else
                 {
