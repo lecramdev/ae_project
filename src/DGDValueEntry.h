@@ -8,6 +8,7 @@ public:
     int labelValues[4];
     int currentLabel;
     std::unordered_set<int> connectedLabels;
+    BoundingBox bbs[4];
 
     ValueEntry(): labelValues{0,0,0,0}, currentLabel(-1){};
     ~ValueEntry() = default;

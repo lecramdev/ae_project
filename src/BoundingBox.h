@@ -70,4 +70,15 @@ struct BoundingBox
             ymax = bb.ymax;
         }
     }
+
+    void assign(const BoundingBox& bb){
+        xmin = bb.xmin;
+        xmax = bb.xmax;
+        ymin = bb.ymin;
+        ymax = bb.ymax;
+    }
+
+    void print(){
+        std::cout<<xmin<<", "<< ymin<<", "<< xmax<<", "<< ymax<<std::endl;
+    }
 };

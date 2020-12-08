@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Algorithm.h"
-#include "util.h"
+#include "DGDDatapoint.h"
+//#include "util.h"
 #include <time.h>
 #include <vector>
 #include <iostream>
@@ -22,8 +23,14 @@ class DGDAlgorithm : public Algorithm
 {
 public:
     int configurationValue = 0;
+    std::vector<DGDDataPoint> DGDdata;
     void run(std::vector<DataPoint>& data) override
     {
+        DGDdata.reserve(data.size());
+        for(int i = 0; i<data.size();i++){
+            DGDdata.emplace_back(data[i].xPos, data[i].yPos, data[i].width, data[i].height, data[i].name);
+        }
+
         //Step 1: All Labels are assigned a random position
         //|--------|--------|
         //|    2   |    3   |
@@ -32,20 +39,22 @@ public:
         //|--------|--------|
         srand (time(NULL));
         std::vector<ValueEntry> values;
-        values.reserve(data.size());
-        for (int i = 0; i < data.size(); i++)
+        values.reserve(DGDdata.size());
+        for (int i = 0; i < DGDdata.size(); i++)
         {
             values.emplace_back(0,0,0,0,-1);
             int randpos = rand() % 4;
-            data[i].isLabeled = true;
-            applyLabelToPos(values, data, i, randpos);
+            DGDdata[i].isLabeled = true;
+            applyLabelToPos(values, DGDdata, i, randpos);
             
         }
+        std::cout<<"total: "<< configurationValue <<std::endl;
         //Step 2 set up all label position values:
-        setupLabelConnections(values, data);
+        setupLabelConnections(values, DGDdata);
+        std::cout<<"total: "<< configurationValue <<std::endl;
         
         //step 3: until no further improvement is possible:
-        int countdown = 3;
+        int countdown = 2;
         int lastValue = 1;
         while(countdown >= 0){
             
@@ -53,16 +62,17 @@ public:
             for (int i = 0; i < values.size(); i++)
             {
                 int oldPos = values[i].currentLabel;
-                int oldxTL = data[i].xLabelTL;
-                int oldyTL = data[i].yLabelTL;
+                int oldxTL = DGDdata[i].xLabelTL;
+                int oldyTL = DGDdata[i].yLabelTL;
                 int newPos = getSmallestIndex(values[i]);
-                applyLabelToPos(values, data, i, newPos);
+                //std::cout<<oldPos<<" vs. "<< newPos<<std::endl;
+                applyLabelToPos(values, DGDdata, i, newPos);
                                 
                 //update total configurationValue
                 configurationValue -= values[i].labelValues[oldPos];
                 configurationValue += values[i].labelValues[newPos];
                 //update the values of the surrounding labels
-                updateLocalLabels(values, data, i, oldxTL, oldyTL);
+                updateLocalLabels(values, DGDdata, i, oldxTL, oldyTL);
                 
                 
             }
@@ -71,9 +81,9 @@ public:
             }else if(lastValue < configurationValue + 2 && lastValue > configurationValue - 2){
                 countdown --;
             }else{
-                countdown == 3;
+                countdown == 2;
             }
-            std::cout<<configurationValue<<std::endl;
+            //std::cout<<configurationValue<<std::endl;
             lastValue = configurationValue;
         }
 
@@ -82,41 +92,63 @@ public:
         {
             if(values[i].labelValues[values[i].currentLabel] > 0){
                 configurationValue -= values[i].labelValues[values[i].currentLabel];
-                deleteLabel(values, data, i);
-                data[i].isLabeled = false;
-                data[i].xLabelTL = 0;
-                data[i].yLabelTL = 0;
+                deleteLabel(values, DGDdata, i);
+                DGDdata[i].isLabeled = false;
+                DGDdata[i].xLabelTL = 0;
+                DGDdata[i].yLabelTL = 0;
+                data[i].label = LabelPos::NONE;
+            }else{
+            switch (values[i].currentLabel)
+                {
+                case 0:
+                    data[i].label = LabelPos::SE;
+                    break;
+                case 1:
+                    data[i].label = LabelPos::SW;
+                    break;
+                case 2:
+                    data[i].label = LabelPos::NW;
+                    break;
+                case 3:
+                    data[i].label = LabelPos::NE;
+                    break;
+                
+                default:
+                    break;
+                }
             }
             //std::cout<< "Point " << i <<", with label "<< values[i].currentLabel <<" has values: L0 = " << values[i].labelValues[0]<<", L1 = "<<values[i].labelValues[1]<<", L2 = " <<values[i].labelValues[2]<<", L3 = "<<values[i].labelValues[3]<<std::endl;
-        
+
+            
         }
+
         
         
         
     }
 
 
-    /*Updates the values in the data vector depending on the given position */
-    void applyLabelToPos(std::vector<ValueEntry>& values, std::vector<DataPoint>& data, int i, int pos){
+    /*Updates the values in the DGDdata vector depending on the given position */
+    void applyLabelToPos(std::vector<ValueEntry>& values, std::vector<DGDDataPoint>& DGDdata, int i, int pos){
         switch(pos) {
             case 0:
-                data[i].xLabelTL = data[i].xPos;
-                data[i].yLabelTL = data[i].yPos;
+                DGDdata[i].xLabelTL = DGDdata[i].xPos;
+                DGDdata[i].yLabelTL = DGDdata[i].yPos;
                 values[i].currentLabel = 0; 
                 break;
             case 1:
-                data[i].xLabelTL = data[i].xPos - data[i].width;
-                data[i].yLabelTL = data[i].yPos;
+                DGDdata[i].xLabelTL = DGDdata[i].xPos - DGDdata[i].width;
+                DGDdata[i].yLabelTL = DGDdata[i].yPos;
                 values[i].currentLabel = 1; 
                 break;
             case 2:
-                data[i].xLabelTL = data[i].xPos - data[i].width;
-                data[i].yLabelTL = data[i].yPos + data[i].height;
+                DGDdata[i].xLabelTL = DGDdata[i].xPos - DGDdata[i].width;
+                DGDdata[i].yLabelTL = DGDdata[i].yPos + DGDdata[i].height;
                 values[i].currentLabel = 2; 
                 break;
             case 3:
-                data[i].xLabelTL = data[i].xPos;
-                data[i].yLabelTL = data[i].yPos + data[i].height;
+                DGDdata[i].xLabelTL = DGDdata[i].xPos;
+                DGDdata[i].yLabelTL = DGDdata[i].yPos + DGDdata[i].height;
                 values[i].currentLabel = 3; 
                 break;
             default:
@@ -125,7 +157,7 @@ public:
     }
 
     /*Updates all Label values in the Value array after the Label in value index was deleted*/
-    void deleteLabel(std::vector<ValueEntry>& values, std::vector<DataPoint>& data, int valueIndex){
+    void deleteLabel(std::vector<ValueEntry>& values, std::vector<DGDDataPoint>& DGDdata, int valueIndex){
         //currentVE is the just updated point with its label
         ValueEntry currentVE = values[valueIndex];
         //For all neighboring labels, update their values (using their connected labels)
@@ -138,26 +170,26 @@ public:
                 {
                     //check if there was a collision with the deleted label (remove 1 value) 
                 case 0:
-                    if (AABBCollision(data[valueIndex].xLabelTL, data[valueIndex].yLabelTL, data[valueIndex].width, data[valueIndex].height,
-                                    data[i].xPos, data[i].yPos, data[i].width, data[i].height)){
+                    if (AABBCollision(DGDdata[valueIndex].xLabelTL, DGDdata[valueIndex].yLabelTL, DGDdata[valueIndex].width, DGDdata[valueIndex].height,
+                                    DGDdata[i].xPos, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height)){
                         values[neighbourDirect].labelValues[lno]--;
                     }
                     break;
                 case 1:
-                    if (AABBCollision(data[valueIndex].xLabelTL, data[valueIndex].yLabelTL, data[valueIndex].width, data[valueIndex].height,
-                                    data[i].xPos - data[i].width, data[i].yPos, data[i].width, data[i].height)){
+                    if (AABBCollision(DGDdata[valueIndex].xLabelTL, DGDdata[valueIndex].yLabelTL, DGDdata[valueIndex].width, DGDdata[valueIndex].height,
+                                    DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height)){
                         values[neighbourDirect].labelValues[lno]--;
                     }
                     break;
                 case 2:
-                    if (AABBCollision(data[valueIndex].xLabelTL, data[valueIndex].yLabelTL, data[valueIndex].width, data[valueIndex].height,
-                                    data[i].xPos - data[i].width, data[i].yPos + data[i].height, data[i].width, data[i].height)){
+                    if (AABBCollision(DGDdata[valueIndex].xLabelTL, DGDdata[valueIndex].yLabelTL, DGDdata[valueIndex].width, DGDdata[valueIndex].height,
+                                    DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height)){
                         values[neighbourDirect].labelValues[lno]--;
                     }
                     break;
                 case 3:
-                    if (AABBCollision(data[valueIndex].xLabelTL, data[valueIndex].yLabelTL, data[valueIndex].width, data[valueIndex].height,
-                                    data[i].xPos, data[i].yPos + data[i].height, data[i].width, data[i].height)){
+                    if (AABBCollision(DGDdata[valueIndex].xLabelTL, DGDdata[valueIndex].yLabelTL, DGDdata[valueIndex].width, DGDdata[valueIndex].height,
+                                    DGDdata[i].xPos, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height)){
                         values[neighbourDirect].labelValues[lno]--;
                     }
                     break;
@@ -186,76 +218,76 @@ public:
     }
 
     /*Sets up all the connections between the neighbouring points. Also initializes the value arrays of all the points depending on their initial random label placement*/
-    void setupLabelConnections(std::vector<ValueEntry>& values, std::vector<DataPoint>& data){
+    void setupLabelConnections(std::vector<ValueEntry>& values, std::vector<DGDDataPoint>& DGDdata){
         configurationValue = 0;
-        for (int i = 0; i < data.size(); i++){
+        for (int i = 0; i < DGDdata.size(); i++){
             //for all 4 labels check all other possible labels
             for(int lno = 0; lno <4; lno++){
                 int Lcount = 0; 
-                for (int j = 0; j < data.size(); j++)
+                for (int j = 0; j < DGDdata.size(); j++)
                 {
                     if (i != j)
                     {
-                        if (data[j].isLabeled)
+                        if (DGDdata[j].isLabeled)
                         {
                             switch (lno)
                             {
                             case 0:
-                                if (AABBCollision(data[j].xPos, data[j].yPos, data[j].width, data[j].height,
-                                                data[i].xPos, data[i].yPos, data[i].width, data[i].height) ){
+                                if (AABBCollision(DGDdata[j].xPos, DGDdata[j].yPos, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height) ){
                                     Lcount++;  
                                     values[i].connectedLabels.insert(j);  
-                                }else if(AABBCollision(data[j].xPos - data[j].width, data[j].yPos, data[j].width, data[j].height,
-                                                data[i].xPos, data[i].yPos, data[i].width, data[i].height) ||
-                                                AABBCollision(data[j].xPos - data[j].width, data[j].yPos + data[j].height, data[j].width, data[j].height,
-                                                data[i].xPos, data[i].yPos, data[i].width, data[i].height) ||
-                                                AABBCollision(data[j].xPos, data[j].yPos + data[j].height, data[j].width, data[j].height,
-                                                data[i].xPos, data[i].yPos, data[i].width, data[i].height))
+                                }else if(AABBCollision(DGDdata[j].xPos - DGDdata[j].width, DGDdata[j].yPos, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height) ||
+                                                AABBCollision(DGDdata[j].xPos - DGDdata[j].width, DGDdata[j].yPos + DGDdata[j].height, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height) ||
+                                                AABBCollision(DGDdata[j].xPos, DGDdata[j].yPos + DGDdata[j].height, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height))
                                 {
                                     values[i].connectedLabels.insert(j);
                                 }
                                 break;
                             case 1:
-                                if (AABBCollision(data[j].xPos - data[j].width, data[j].yPos, data[j].width, data[j].height,
-                                                data[i].xPos - data[i].width, data[i].yPos, data[i].width, data[i].height)){
+                                if (AABBCollision(DGDdata[j].xPos - DGDdata[j].width, DGDdata[j].yPos, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height)){
                                     Lcount++;  
                                     values[i].connectedLabels.insert(j); 
-                                }else if (AABBCollision(data[j].xPos, data[j].yPos, data[j].width, data[j].height,
-                                                data[i].xPos - data[i].width, data[i].yPos, data[i].width, data[i].height) ||
-                                                AABBCollision(data[j].xPos - data[j].width, data[j].yPos + data[j].height, data[j].width, data[j].height,
-                                                data[i].xPos - data[i].width, data[i].yPos, data[i].width, data[i].height) ||
-                                                AABBCollision(data[j].xPos, data[j].yPos + data[j].height, data[j].width, data[j].height,
-                                                data[i].xPos - data[i].width, data[i].yPos, data[i].width, data[i].height))
+                                }else if (AABBCollision(DGDdata[j].xPos, DGDdata[j].yPos, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height) ||
+                                                AABBCollision(DGDdata[j].xPos - DGDdata[j].width, DGDdata[j].yPos + DGDdata[j].height, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height) ||
+                                                AABBCollision(DGDdata[j].xPos, DGDdata[j].yPos + DGDdata[j].height, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height))
                                 {
                                     values[i].connectedLabels.insert(j);
                                 }
                                 break;
                             case 2:
-                                if(AABBCollision(data[j].xPos - data[j].width, data[j].yPos + data[j].height, data[j].width, data[j].height,
-                                                data[i].xPos - data[i].width, data[i].yPos + data[i].height, data[i].width, data[i].height)){
+                                if(AABBCollision(DGDdata[j].xPos - DGDdata[j].width, DGDdata[j].yPos + DGDdata[j].height, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height)){
                                     Lcount++;
                                     values[i].connectedLabels.insert(j);
-                                }else if (AABBCollision(data[j].xPos, data[j].yPos, data[j].width, data[j].height,
-                                                data[i].xPos - data[i].width, data[i].yPos + data[i].height, data[i].width, data[i].height) ||
-                                                AABBCollision(data[j].xPos - data[j].width, data[j].yPos, data[j].width, data[j].height,
-                                                data[i].xPos - data[i].width, data[i].yPos + data[i].height, data[i].width, data[i].height) ||
-                                                AABBCollision(data[j].xPos, data[j].yPos + data[j].height, data[j].width, data[j].height,
-                                                data[i].xPos - data[i].width, data[i].yPos + data[i].height, data[i].width, data[i].height))
+                                }else if (AABBCollision(DGDdata[j].xPos, DGDdata[j].yPos, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height) ||
+                                                AABBCollision(DGDdata[j].xPos - DGDdata[j].width, DGDdata[j].yPos, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height) ||
+                                                AABBCollision(DGDdata[j].xPos, DGDdata[j].yPos + DGDdata[j].height, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height))
                                 {
                                     values[i].connectedLabels.insert(j);
                                 }
                                 break;
                             case 3:
-                                if(AABBCollision(data[j].xPos, data[j].yPos + data[j].height, data[j].width, data[j].height,
-                                                data[i].xPos, data[i].yPos + data[i].height, data[i].width, data[i].height)){
+                                if(AABBCollision(DGDdata[j].xPos, DGDdata[j].yPos + DGDdata[j].height, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height)){
                                     Lcount++;
                                     values[i].connectedLabels.insert(j);
-                                }else if (AABBCollision(data[j].xPos, data[j].yPos, data[j].width, data[j].height,
-                                                data[i].xPos, data[i].yPos + data[i].height, data[i].width, data[i].height) ||
-                                                AABBCollision(data[j].xPos - data[j].width, data[j].yPos, data[j].width, data[j].height,
-                                                data[i].xPos, data[i].yPos + data[i].height, data[i].width, data[i].height) ||
-                                                AABBCollision(data[j].xPos - data[j].width, data[j].yPos + data[j].height, data[j].width, data[j].height,
-                                                data[i].xPos, data[i].yPos + data[i].height, data[i].width, data[i].height))
+                                }else if (AABBCollision(DGDdata[j].xPos, DGDdata[j].yPos, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height) ||
+                                                AABBCollision(DGDdata[j].xPos - DGDdata[j].width, DGDdata[j].yPos, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height) ||
+                                                AABBCollision(DGDdata[j].xPos - DGDdata[j].width, DGDdata[j].yPos + DGDdata[j].height, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height))
                                 {
                                     values[i].connectedLabels.insert(j);
                                 }
@@ -275,7 +307,7 @@ public:
     }
 
     /*Updates the label values of all the neighbours of the point at valueIndex after its label was moved.*/
-    void updateLocalLabels(std::vector<ValueEntry>& values, std::vector<DataPoint>& data, int valueIndex, int oldXTL, int oldYTL){
+    void updateLocalLabels(std::vector<ValueEntry>& values, std::vector<DGDDataPoint>& DGDdata, int valueIndex, int oldXTL, int oldYTL){
         //currentVE is the just updated point with its label
         ValueEntry currentVE = values[valueIndex];
         //For all neighboring labels, update their values (using their connected labels)
@@ -288,58 +320,58 @@ public:
                 {
                     //check if there was a collision with the old label (remove 1 value) or a collision with the new label (add 1 value) for all four labels of the neighbour
                 case 0:
-                    if (AABBCollision(oldXTL, oldYTL, data[valueIndex].width, data[valueIndex].height,
-                                        data[i].xPos, data[i].yPos, data[i].width, data[i].height))
+                    if (AABBCollision(oldXTL, oldYTL, DGDdata[valueIndex].width, DGDdata[valueIndex].height,
+                                        DGDdata[i].xPos, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height))
                         {
                             if(values[neighbourDirect].labelValues[lno] > 0){
                                 values[neighbourDirect].labelValues[lno]--;
                             }
                         }
-                    if (AABBCollision(data[valueIndex].xLabelTL, data[valueIndex].yLabelTL, data[valueIndex].width, data[valueIndex].height,
-                                    data[i].xPos, data[i].yPos, data[i].width, data[i].height))
+                    if (AABBCollision(DGDdata[valueIndex].xLabelTL, DGDdata[valueIndex].yLabelTL, DGDdata[valueIndex].width, DGDdata[valueIndex].height,
+                                    DGDdata[i].xPos, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height))
                     {
                         values[neighbourDirect].labelValues[lno]++;
                     }
                    
                     break;
                 case 1:
-                    if (AABBCollision(oldXTL, oldYTL, data[valueIndex].width, data[valueIndex].height,
-                                    data[i].xPos - data[i].width, data[i].yPos, data[i].width, data[i].height))
+                    if (AABBCollision(oldXTL, oldYTL, DGDdata[valueIndex].width, DGDdata[valueIndex].height,
+                                    DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height))
                     {
                         if(values[neighbourDirect].labelValues[lno] > 0){
                             values[neighbourDirect].labelValues[lno]--;
                         }
                     }
-                    if (AABBCollision(data[valueIndex].xLabelTL, data[valueIndex].yLabelTL, data[valueIndex].width, data[valueIndex].height,
-                                    data[i].xPos - data[i].width, data[i].yPos, data[i].width, data[i].height))
+                    if (AABBCollision(DGDdata[valueIndex].xLabelTL, DGDdata[valueIndex].yLabelTL, DGDdata[valueIndex].width, DGDdata[valueIndex].height,
+                                    DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height))
                     {
                         values[neighbourDirect].labelValues[lno]++;
                     }
                     break;
                 case 2:
-                    if (AABBCollision(oldXTL, oldYTL, data[valueIndex].width, data[valueIndex].height,
-                                    data[i].xPos - data[i].width, data[i].yPos + data[i].height, data[i].width, data[i].height))
+                    if (AABBCollision(oldXTL, oldYTL, DGDdata[valueIndex].width, DGDdata[valueIndex].height,
+                                    DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height))
                     {
                         if(values[neighbourDirect].labelValues[lno] > 0){
                             values[neighbourDirect].labelValues[lno]--;
                         }
                     }
-                    if (AABBCollision(data[valueIndex].xLabelTL, data[valueIndex].yLabelTL, data[valueIndex].width, data[valueIndex].height,
-                                    data[i].xPos - data[i].width, data[i].yPos + data[i].height, data[i].width, data[i].height))
+                    if (AABBCollision(DGDdata[valueIndex].xLabelTL, DGDdata[valueIndex].yLabelTL, DGDdata[valueIndex].width, DGDdata[valueIndex].height,
+                                    DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height))
                     {
                         values[neighbourDirect].labelValues[lno]++;
                     }
                     break;
                 case 3:
-                    if (AABBCollision(oldXTL, oldYTL, data[valueIndex].width, data[valueIndex].height,
-                                    data[i].xPos, data[i].yPos + data[i].height, data[i].width, data[i].height))
+                    if (AABBCollision(oldXTL, oldYTL, DGDdata[valueIndex].width, DGDdata[valueIndex].height,
+                                    DGDdata[i].xPos, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height))
                     {
                         if(values[neighbourDirect].labelValues[lno] > 0){
                             values[neighbourDirect].labelValues[lno]--;
                         }
                     }
-                    if (AABBCollision(data[valueIndex].xLabelTL, data[valueIndex].yLabelTL, data[valueIndex].width, data[valueIndex].height,
-                                    data[i].xPos, data[i].yPos + data[i].height, data[i].width, data[i].height))
+                    if (AABBCollision(DGDdata[valueIndex].xLabelTL, DGDdata[valueIndex].yLabelTL, DGDdata[valueIndex].width, DGDdata[valueIndex].height,
+                                    DGDdata[i].xPos, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height))
                     {
                         values[neighbourDirect].labelValues[lno]++;
                     }
@@ -352,46 +384,46 @@ public:
         }
     }
 
-    /*void calculateLabelValues(std::vector<ValueEntry>& values, std::vector<DataPoint>& data){
+    /*void calculateLabelValues(std::vector<ValueEntry>& values, std::vector<DataPoint>& DGDdata){
         configurationValue = 0;
-        for (int i = 0; i < data.size(); i++){
+        for (int i = 0; i < DGDdata.size(); i++){
                 //calculate value of all 4 positions
                 int Lcount = 0;
 
             for(int lno = 0; lno <4; lno++){
                 Lcount = 0; 
-                for (int j = 0; j < data.size(); j++)
+                for (int j = 0; j < DGDdata.size(); j++)
                 {
                     if (i != j)
                     {
-                        if (data[j].isLabeled)
+                        if (DGDdata[j].isLabeled)
                         {
                             switch (lno)
                             {
                             case 0:
-                                if (AABBCollision(data[j].xLabelTL, data[j].yLabelTL, data[j].width, data[j].height,
-                                                data[i].xPos, data[i].yPos, data[i].width, data[i].height))
+                                if (AABBCollision(DGDdata[j].xLabelTL, DGDdata[j].yLabelTL, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height))
                                 {
                                     Lcount++;
                                 }
                                 break;
                             case 1:
-                                if (AABBCollision(data[j].xLabelTL, data[j].yLabelTL, data[j].width, data[j].height,
-                                                data[i].xPos - data[i].width, data[i].yPos, data[i].width, data[i].height))
+                                if (AABBCollision(DGDdata[j].xLabelTL, DGDdata[j].yLabelTL, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos, DGDdata[i].width, DGDdata[i].height))
                                 {
                                     Lcount++;
                                 }
                                 break;
                             case 2:
-                                if (AABBCollision(data[j].xLabelTL, data[j].yLabelTL, data[j].width, data[j].height,
-                                                data[i].xPos - data[i].width, data[i].yPos + data[i].height, data[i].width, data[i].height))
+                                if (AABBCollision(DGDdata[j].xLabelTL, DGDdata[j].yLabelTL, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos - DGDdata[i].width, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height))
                                 {
                                     Lcount++;
                                 }
                                 break;
                             case 3:
-                                if (AABBCollision(data[j].xLabelTL, data[j].yLabelTL, data[j].width, data[j].height,
-                                                data[i].xPos, data[i].yPos + data[i].height, data[i].width, data[i].height))
+                                if (AABBCollision(DGDdata[j].xLabelTL, DGDdata[j].yLabelTL, DGDdata[j].width, DGDdata[j].height,
+                                                DGDdata[i].xPos, DGDdata[i].yPos + DGDdata[i].height, DGDdata[i].width, DGDdata[i].height))
                                 {
                                     Lcount++;
                                 }
@@ -410,4 +442,7 @@ public:
         }
 
     }*/
+    inline bool AABBCollision(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2){
+        return x1 < (x2 + w2) && (x1 + w1) > x2 && (y1 - h1) < y2 && ((y1 - h1) + h1) > (y2 -h2);
+    }
 };
