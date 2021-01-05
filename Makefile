@@ -3,7 +3,8 @@ MKDIR_P = mkdir -p
 CXX=g++-9
 
 # Flags
-CXXFLAGS += -MMD -MP
+CXXFLAGS += -MMD -MP -I/opt/gurobi911/linux64/include
+LDFLAGS += -L/opt/gurobi911/linux64/lib/ -lgurobi_g++5.2 -lgurobi91
 
 # Defines
 BUILD_DIR = $(CURDIR)/build
@@ -25,10 +26,10 @@ DEBUG_DEPS = $(DEBUG_OBJS:.o=.d)
 
 # Rules
 $(RELEASE_APP): $(RELEASE_OBJS)
-	$(CXX) -O2 $(RELEASE_OBJS) -o $@
+	$(CXX) -O2 $(RELEASE_OBJS) -o $@ $(LDFLAGS)
 
 $(DEBUG_APP): $(DEBUG_OBJS)
-	$(CXX) -g -pg $(DEBUG_OBJS) -o $@
+	$(CXX) -g -pg $(DEBUG_OBJS) -o $@ $(LDFLAGS)
 
 $(RELEASE_DIR)/%.o: %.cpp
 	@$(MKDIR_P) $(dir $@)

@@ -13,6 +13,7 @@
 #include "DGDAlgorithm.h"
 #include "QuadTreeTestAlgo.h"
 #include "SimulatedAnnealing.h"
+#include "ILPAlgorithm.h"
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -45,6 +46,11 @@ std::unique_ptr<Algorithm> selectAlgorithm(std::map<std::string, std::string>& o
     {
         std::cout << "Using \"SimulatedAnnealing\"" << std::endl;
         algo = std::make_unique<SimulatedAnnealing>();
+    }
+    else if (algoStr == "ilp")
+    {
+        std::cout << "Using \"ILP\"" << std::endl;
+        algo = std::make_unique<ILPAlgorithm>();
     }
     else
     {
@@ -247,7 +253,7 @@ int main(int argc, char* argv[])
                 // Setup algorithm
                 std::unique_ptr<Algorithm> algo = selectAlgorithm(options);
 
-                int num_repeat = std::ceil(10000.0 / input.size());
+                int num_repeat = 1; //std::ceil(10000.0 / input.size());
                 double sum_time = 0.0;
                 std::vector<DataPoint> working_copy;
 
