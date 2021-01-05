@@ -26,6 +26,8 @@ public:
     std::vector<DGDDataPoint> DGDdata;
     void run(std::vector<DataPoint>& data) override
     {
+        configurationValue = 0;
+        DGDdata.clear();
         DGDdata.reserve(data.size());
         for(int i = 0; i<data.size();i++){
             DGDdata.emplace_back(data[i].xPos, data[i].yPos, data[i].width, data[i].height, data[i].name);
@@ -56,7 +58,9 @@ public:
         //step 3: until no further improvement is possible:
         int countdown = 2;
         int lastValue = 1;
-        while(countdown >= 0){
+        int timeout = 30;
+        while(countdown >= 0 && timeout >= 0){
+            timeout--;
             
             //a) for each label consider the best position and move it there
             for (int i = 0; i < values.size(); i++)
@@ -81,7 +85,7 @@ public:
             }else if(lastValue < configurationValue + 2 && lastValue > configurationValue - 2){
                 countdown --;
             }else{
-                countdown == 2;
+                countdown = 2;
             }
             //std::cout<<configurationValue<<std::endl;
             lastValue = configurationValue;
