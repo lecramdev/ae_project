@@ -49,8 +49,14 @@ std::unique_ptr<Algorithm> selectAlgorithm(std::map<std::string, std::string>& o
     }
     else if (algoStr == "ilp")
     {
-        std::cout << "Using \"ILP\"" << std::endl;
-        algo = std::make_unique<ILPAlgorithm>();
+        auto mode_optiom = options.find("-mode");
+        int mode = 2;
+        if(mode_optiom != options.end())
+        {
+            mode = std::atoi(mode_optiom->second.c_str());
+        }
+        std::cout << "Using \"ILP\" with mode " << mode << std::endl;
+        algo = std::make_unique<ILPAlgorithm>(mode);
     }
     else
     {

@@ -16,7 +16,8 @@ public:
     GRBVar* vars;
     std::vector<std::vector<uint32_t>>& coll;
     std::vector<uint32_t>& three_pair;
-    ILPCallback(int xnumvars, GRBVar* xvars, std::vector<std::vector<uint32_t>>& xcoll, std::vector<uint32_t>& xthree_pair) : coll(xcoll), three_pair(xthree_pair)
+    int mode;
+    ILPCallback(int xnumvars, GRBVar* xvars, std::vector<std::vector<uint32_t>>& xcoll, std::vector<uint32_t>& xthree_pair, int mode) : coll(xcoll), three_pair(xthree_pair), mode(mode)
     {
         lastiter = lastnode = -GRB_INFINITY;
         numvars = xnumvars;
@@ -47,26 +48,29 @@ protected:
                 {
                     double* x = getNodeRel(vars, numvars);
 
-                    /*double max_over = 0.0;
-                    uint32_t max_first, max_second, max_third;
-                    for (uint32_t i = 0; i < three_pair.size(); i += 3)
+                    if (mode == 4)
                     {
-                        uint32_t first = three_pair[i];
-                        uint32_t second = three_pair[i + 1];
-                        uint32_t third = three_pair[i + 2];
-                        if ((x[first] + x[second] + x[third] > max_over))
+                        double max_over = 0.0;
+                        uint32_t max_first, max_second, max_third;
+                        for (uint32_t i = 0; i < three_pair.size(); i += 3)
                         {
-                            max_over = x[first] + x[second] + x[third];
-                            max_first = first;
-                            max_second = second;
-                            max_third = third;
+                            uint32_t first = three_pair[i];
+                            uint32_t second = three_pair[i + 1];
+                            uint32_t third = three_pair[i + 2];
+                            if ((x[first] + x[second] + x[third] > max_over))
+                            {
+                                max_over = x[first] + x[second] + x[third];
+                                max_first = first;
+                                max_second = second;
+                                max_third = third;
+                            }
+                        }
+                        if (max_over > 1.1)
+                        {
+                            addCut(vars[max_first] + vars[max_second] + vars[max_third] <= 1.0);
+                            //std::cout << "add cut " << max_over << '\n';
                         }
                     }
-                    if (max_over > 1.1)
-                    {
-                        addCut(vars[max_first] + vars[max_second] + vars[max_third] <= 1.0);
-                        //std::cout << "add cut " << max_over << '\n';
-                    }*/
 
                     for (int i = 0; i < numvars; i += 4)
                     {
@@ -178,9 +182,24 @@ protected:
 
 class ILPAlgorithm : public Algorithm
 {
+    int mode;
+
 public:
-    explicit ILPAlgorithm()
+
+    /**
+     * Modes:
+     * 0: Plain basic ILP
+     * 1: Custom heuristic
+     * 2: Better parameters
+     * 3: 3-pair constraints
+     * 4: 3-pair constraints as user cuts
+     */
+    explicit ILPAlgorithm(int mode) : mode(mode)
     {
+        if (mode < 0 || mode > 4)
+        {
+            throw std::runtime_error("Mode must be 0-4!");
+        }
     }
 
     void run(std::vector<DataPoint>& data) override
@@ -226,12 +245,21 @@ public:
             GRBModel model = GRBModel(env);
             //model.set(GRB_IntParam_LazyConstraints, 1);
             model.set(GRB_IntParam_OutputFlag, 0);
-            //model.set(GRB_DoubleParam_Heuristics, 0.0);
+            if (mode >= 1)
+            {
+                model.set(GRB_DoubleParam_Heuristics, 0.0);
+            }
             model.set(GRB_DoubleParam_TimeLimit, 30.0 * 60.0); // max 30 min.
-            /*model.set(GRB_IntParam_Method, 2);
-            model.set(GRB_IntParam_NodeMethod, 1);
-            model.set(GRB_IntParam_MIPFocus, 2);*/
-            //model.set(GRB_IntParam_PreCrush, 1);
+            if (mode >= 2)
+            {
+                model.set(GRB_IntParam_Method, 2);
+                model.set(GRB_IntParam_NodeMethod, 1);
+                model.set(GRB_IntParam_MIPFocus, 2);
+            }
+            if (mode == 4)
+            {
+                model.set(GRB_IntParam_PreCrush, 1);
+            }
 
             // Create variables
             std::vector<GRBVar> variables;
@@ -265,56 +293,64 @@ public:
 
             int cnt = 0;
             std::vector<uint32_t> three_pair;
-            /*for (uint32_t first = 0; first < collision_list.size(); first++)
+            if (mode >= 3)
             {
-                for (uint32_t j = 0; j < collision_list[first].size(); j++)
+                for (uint32_t first = 0; first < collision_list.size(); first++)
                 {
-                    uint32_t second = collision_list[first][j];
-                    if (second != -1 && second > first)
+                    for (uint32_t j = 0; j < collision_list[first].size(); j++)
                     {
-                        for (uint32_t k = 0; k < collision_list[second].size(); k++)
+                        uint32_t second = collision_list[first][j];
+                        if (second != -1 && second > first)
                         {
-                            uint32_t third = collision_list[second][k];
-                            if (third != -1 && third > second)
+                            for (uint32_t k = 0; k < collision_list[second].size(); k++)
                             {
-                                for (uint32_t l = 0; l < collision_list[third].size(); l++)
+                                uint32_t third = collision_list[second][k];
+                                if (third != -1 && third > second)
                                 {
-                                    uint32_t fourth = collision_list[third][l];
-                                    if (fourth == first)
+                                    for (uint32_t l = 0; l < collision_list[third].size(); l++)
                                     {
-                                        cnt++;
+                                        uint32_t fourth = collision_list[third][l];
+                                        if (fourth == first)
+                                        {
+                                            cnt++;
 
-                                        three_pair.push_back(first);
-                                        three_pair.push_back(second);
-                                        three_pair.push_back(third);
+                                            if (mode == 4)
+                                            {
+                                                three_pair.push_back(first);
+                                                three_pair.push_back(second);
+                                                three_pair.push_back(third);
+                                            }
+                                            else if (mode == 3)
+                                            {
+                                                auto constr = model.addConstr(variables[first] + variables[second] + variables[third] <= 1);
+                                                // constr.set(GRB_IntAttr_Lazy, -1);
+                                                // std::cout << "Cut: " << first << " " << second << " " << third << '\n';
 
-                                        // auto constr = model.addConstr(variables[first] + variables[second] + variables[third] <= 1);
-                                        // constr.set(GRB_IntAttr_Lazy, -1);
-                                        // std::cout << "Cut: " << first << " " << second << " " << third << '\n';
+                                                collision_copy[first][j] = -1;
+                                                collision_copy[second][k] = -1;
+                                                for (uint32_t m = 0; m < collision_list[first].size(); m++)
+                                                {
+                                                    if (collision_list[first][m] == third)
+                                                    {
+                                                        collision_copy[first][m] = -1;
+                                                    }
+                                                }
+                                            }
 
-                                        // collision_copy[first][j] = -1;
-                                        // collision_copy[second][k] = -1;
-                                        // for (uint32_t m = 0; m < collision_list[first].size(); m++)
-                                        // {
-                                        //     if (collision_list[first][m] == third)
-                                        //     {
-                                        //         collision_copy[first][m] = -1;
-                                        //     }
-                                        // }
-
-                                        // auto cut1 = model.addConstr(variables[first] + variables[second] <= 1);
-                                        // cut1.set(GRB_IntAttr_Lazy, -1);
-                                        // auto cut2 = model.addConstr(variables[first] + variables[third] <= 1);
-                                        // cut2.set(GRB_IntAttr_Lazy, -1);
-                                        // auto cut3 = model.addConstr(variables[second] + variables[third] <= 1);
-                                        // cut3.set(GRB_IntAttr_Lazy, -1);
+                                            // auto cut1 = model.addConstr(variables[first] + variables[second] <= 1);
+                                            // cut1.set(GRB_IntAttr_Lazy, -1);
+                                            // auto cut2 = model.addConstr(variables[first] + variables[third] <= 1);
+                                            // cut2.set(GRB_IntAttr_Lazy, -1);
+                                            // auto cut3 = model.addConstr(variables[second] + variables[third] <= 1);
+                                            // cut3.set(GRB_IntAttr_Lazy, -1);
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
-            }*/
+            }
             std::cout << "=======> 3-pairs: " << cnt << '\n';
 
             for (uint32_t i = 0; i < collision_copy.size(); i++)
@@ -330,8 +366,11 @@ public:
             }
 
             // Set callback
-            //ILPCallback callback(variables.size(), variables.data(), collision_list, three_pair);
-            //model.setCallback(&callback);
+            ILPCallback callback(variables.size(), variables.data(), collision_list, three_pair, mode);
+            if (mode >= 1)
+            {
+                model.setCallback(&callback);
+            }
 
             // Optimize model
             model.optimize();
